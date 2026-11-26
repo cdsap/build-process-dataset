@@ -7,10 +7,10 @@ Reproducible BigQuery-to-Parquet export, validation, and Hugging Face Hub publis
 1. **Exports & cleans** `build_process_samples` directly from BigQuery to Snappy Parquet in GCS (`sql/export_samples.sql`):
    - Keeps standard CI runs (`^run-\d+$`) with at least 3 samples across `GradleDaemon`, `KotlinCompileDaemon`, and `GradleWorkerMain`.
    - Deduplicates on `(run_id, pid, sample_timestamp)`.
-   - Filters out negative heap/cap/gc/elapsed glitches and `rss <= 0` process-exit rows.
+   - Filters out negative metrics, `rss <= 0` process-exit rows, and rows missing JIT or class-loading `jstat` counters.
    - Replaces `run_id` with a deterministic 16-char salted SHA-256 hex digest (`@run_id_salt` query parameter).
 2. **Validates** every Parquet shard locally (`scripts/publish_hf.py`):
-   - Exact 17-column Arrow schema and nullable `int64` types for optional `jstat` columns.
+   - Exact 17-column Arrow schema with zero nulls across all telemetry columns (including JIT and class-loading counters).
    - Confirms every `run_id` matches `^[0-9a-f]{16}$` (zero raw IDs).
    - Confirms zero duplicate keys, zero negative metrics, and only expected process names.
 3. **Publishes** to Hugging Face (`inakivillar/build-process-dataset`, `CC0-1.0`) with an auto-updated Dataset Card (`hf/README.md.tmpl`) and semver git tag (`v1.0.0`, `v1.1.0`, …), then cleans up temporary GCS staging files.

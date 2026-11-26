@@ -60,16 +60,14 @@ Each row is one polling observation for one JVM process (`pid`) during a CI run 
 | `heap_cap` | `int64` | Committed JVM heap capacity (MB) |
 | `rss` | `int64` | Resident Set Size (MB) |
 | `gc_time` | `int64` | Cumulative garbage collection time (ms) |
-| `jit_compiled_methods` | `int64` (nullable) | Cumulative JIT compiled methods (`jstat -compiler`) |
-| `jit_failed_compilations` | `int64` (nullable) | Cumulative failed JIT compilations |
-| `jit_invalidated_compilations` | `int64` (nullable) | Cumulative invalidated JIT compilations |
-| `jit_compilation_time_ms` | `int64` (nullable) | Cumulative compiler-thread elapsed time (ms; not process CPU time) |
-| `classes_loaded` | `int64` (nullable) | Cumulative loaded classes (`jstat -class`) |
-| `classes_unloaded` | `int64` (nullable) | Cumulative unloaded classes |
-| `class_load_time_ms` | `int64` (nullable) | Cumulative class-loading time (ms) |
+| `jit_compiled_methods` | `int64` | Cumulative JIT compiled methods (`jstat -compiler`) |
+| `jit_failed_compilations` | `int64` | Cumulative failed JIT compilations |
+| `jit_invalidated_compilations` | `int64` | Cumulative invalidated JIT compilations |
+| `jit_compilation_time_ms` | `int64` | Cumulative compiler-thread elapsed time (ms; not process CPU time) |
+| `classes_loaded` | `int64` | Cumulative loaded classes (`jstat -class`) |
+| `classes_unloaded` | `int64` | Cumulative unloaded classes |
+| `class_load_time_ms` | `int64` | Cumulative class-loading time (ms) |
 | `run_finished_at` | `timestamp` | UTC timestamp when the monitored CI job finished |
-
-`NULL` values in JIT and class-loading columns indicate earlier runs collected before `jstat -compiler` / `jstat -class` telemetry was enabled, or environments where `jstat` could not attach.
 
 ## Cleaning & Anonymization
 
@@ -78,7 +76,7 @@ Published reproducibly via [`cdsap/build-process-dataset`](https://github.com/cd
 - `run_id` is replaced with a deterministic 16-character salted SHA-256 hex digest.
 - No source code, repository names, task graphs, or JVM launch flags (`vm_flags`) are included.
 - Deduplicated on `(run_id, pid, sample_timestamp)`.
-- Filtered to non-negative `heap_used`, `heap_cap`, `gc_time`, `elapsed_time`, positive `rss`, and runs with at least 3 samples.
+- Filtered to rows with complete non-null JIT (`jstat -compiler`) and class-loading (`jstat -class`) counters, non-negative metrics, positive `rss`, and runs with at least 3 samples.
 
 ## Usage
 

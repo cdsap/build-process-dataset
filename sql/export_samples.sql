@@ -38,6 +38,20 @@ WITH cleaned AS (
     AND rss > 0
     AND gc_time >= 0
     AND elapsed_time >= 0
+    AND jit_compiled_methods IS NOT NULL
+    AND jit_failed_compilations IS NOT NULL
+    AND jit_invalidated_compilations IS NOT NULL
+    AND jit_compilation_time_ms IS NOT NULL
+    AND classes_loaded IS NOT NULL
+    AND classes_unloaded IS NOT NULL
+    AND class_load_time_ms IS NOT NULL
+    AND jit_compiled_methods >= 0
+    AND jit_failed_compilations >= 0
+    AND jit_invalidated_compilations >= 0
+    AND jit_compilation_time_ms >= 0
+    AND classes_loaded >= 0
+    AND classes_unloaded >= 0
+    AND class_load_time_ms >= 0
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY run_id, pid, sample_timestamp
     ORDER BY run_finished_at DESC

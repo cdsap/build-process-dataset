@@ -28,13 +28,13 @@ def _sample_table(overrides: dict | None = None) -> pa.Table:
         "heap_cap": [1024, 1024, 512],
         "rss": [900, 950, 620],
         "gc_time": [120, 140, 80],
-        "jit_compiled_methods": [1500, 1620, None],
-        "jit_failed_compilations": [0, 0, None],
-        "jit_invalidated_compilations": [0, 0, None],
-        "jit_compilation_time_ms": [3200, 3400, None],
-        "classes_loaded": [12000, 12450, None],
-        "classes_unloaded": [10, 10, None],
-        "class_load_time_ms": [2100, 2180, None],
+        "jit_compiled_methods": [1500, 1620, 900],
+        "jit_failed_compilations": [0, 0, 0],
+        "jit_invalidated_compilations": [0, 0, 0],
+        "jit_compilation_time_ms": [3200, 3400, 1800],
+        "classes_loaded": [12000, 12450, 8100],
+        "classes_unloaded": [10, 10, 0],
+        "class_load_time_ms": [2100, 2180, 1100],
         "run_finished_at": [later, later, later],
     }
     if overrides:
@@ -73,7 +73,8 @@ class PublishHfTests(unittest.TestCase):
             self.assertEqual(stats.distinct_runs, 2)
             self.assertEqual(stats.min_date, "2026-10-01")
             self.assertEqual(stats.max_date, "2026-10-01")
-            self.assertAlmostEqual(stats.jit_coverage_pct, 66.7)
+            self.assertAlmostEqual(stats.jit_coverage_pct, 100.0)
+            self.assertAlmostEqual(stats.class_coverage_pct, 100.0)
             self.assertEqual(stats.process_rows["GradleDaemon"], 2)
             self.assertEqual(stats.process_rows["KotlinCompileDaemon"], 1)
 
@@ -109,6 +110,18 @@ class PublishHfTests(unittest.TestCase):
             pq.write_table(_sample_table({"rss": [0, 950, 620]}), p)
             with self.assertRaisesRegex(ValueError, "rss contains <= 0"):
                 validate_parquet_files([p], min_runs=1)
+
+    def test_rejects_null_jit_or_class_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p_jit = Path(tmp) / "null_jit.parquet"
+            pq.write_table(_sample_table({"jit_compiled_methods": [1500, None, 900]}), p_jit)
+            with self.assertRaisesRegex(ValueError, "jit_compiled_methods contains nulls"):
+                validate_parquet_files([p_jit], min_runs=1)
+
+            p_cls = Path(tmp) / "null_cls.parquet"
+            pq.write_table(_sample_table({"classes_loaded": [12000, 12450, None]}), p_cls)
+            with self.assertRaisesRegex(ValueError, "classes_loaded contains nulls"):
+                validate_parquet_files([p_cls], min_runs=1)
 
     def test_rejects_duplicate_sample_key(self) -> None:
         now = dt.datetime(2026, 10, 1, 12, 0, 0, tzinfo=dt.timezone.utc)

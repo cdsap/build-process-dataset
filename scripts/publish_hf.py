@@ -128,24 +128,25 @@ def validate_parquet_files(
 
         total_rows += table.num_rows
 
-        # Required columns must not contain nulls
-        for req_col in (
-            "run_id",
-            "sample_timestamp",
-            "elapsed_time",
-            "pid",
-            "name",
-            "heap_used",
-            "heap_cap",
-            "rss",
-            "gc_time",
-            "run_finished_at",
-        ):
+        # All 17 columns must be non-null (rows without JIT/class counters are excluded)
+        for req_col in expected_names:
             if table[req_col].null_count > 0:
                 raise ValueError(f"Column {req_col} contains nulls in {path.name}")
 
         # Metric bounds checks
-        for non_neg in ("heap_used", "heap_cap", "gc_time", "elapsed_time"):
+        for non_neg in (
+            "heap_used",
+            "heap_cap",
+            "gc_time",
+            "elapsed_time",
+            "jit_compiled_methods",
+            "jit_failed_compilations",
+            "jit_invalidated_compilations",
+            "jit_compilation_time_ms",
+            "classes_loaded",
+            "classes_unloaded",
+            "class_load_time_ms",
+        ):
             if pc.any(pc.less(table[non_neg], 0)).as_py():
                 raise ValueError(f"Column {non_neg} contains negative values in {path.name}")
         if pc.any(pc.less_equal(table["rss"], 0)).as_py():
