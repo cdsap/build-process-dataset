@@ -1,0 +1,78 @@
+name: Publish Hugging Face Dataset
+
+# Public-repo safety: trigger ONLY manually (or via schedule on main).
+# Never add pull_request or pull_request_target triggers to this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: "Dataset snapshot tag (e.g. v1.0.0)"
+        required: true
+        default: "v1.0.0"
+      dry_run:
+        description: "Export and validate only (skip Hugging Face upload)"
+        required: true
+        type: boolean
+        default: true
+  # Uncomment to run an automated monthly refresh on main:
+  # schedule:
+  #   - cron: "0 6 1 * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-hf-dataset
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Export, Validate & Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: ${{ secrets.GCP_WIF_PROVIDER != '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to Google Cloud (Service Account Key fallback)
+        if: ${{ secrets.GCP_WIF_PROVIDER == '' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Run export, validation, and publish
+        env:
+          BQ_PROJECT_ID: ${{ secrets.BQ_PROJECT_ID }}
+          BQ_DATASET: ${{ secrets.BQ_DATASET }}
+          GCS_EXPORT_BUCKET: ${{ secrets.GCS_EXPORT_BUCKET }}
+          RUN_ID_HASH_SALT: ${{ secrets.RUN_ID_HASH_SALT }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO_ID: "cdsap/build-process-dataset"
+        run: |
+          VERSION_TAG="${{ inputs.version_tag }}"
+          if [ -z "$VERSION_TAG" ]; then
+            VERSION_TAG="v$(date -u +%Y.%m.%d)"
+          fi
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          python scripts/publish_hf.py \
+            --version-tag "$VERSION_TAG" \
+            $DRY_RUN_FLAG

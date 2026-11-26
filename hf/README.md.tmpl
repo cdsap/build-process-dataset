@@ -1,0 +1,115 @@
+---
+license: cc0-1.0
+language:
+  - en
+task_categories:
+  - time-series-forecasting
+  - tabular-regression
+tags:
+  - gradle
+  - kotlin
+  - jvm
+  - build-systems
+  - telemetry
+  - memory
+  - gc
+  - jit
+pretty_name: Build Process Watcher JVM Telemetry Samples
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/train-*.parquet
+---
+
+# Build Process Watcher — JVM Telemetry Samples (`{{VERSION_TAG}}`)
+
+Time-series JVM telemetry from real Gradle and Kotlin CI builds collected with [Build Process Watcher](https://github.com/cdsap/build-process-watcher) without injecting a Java agent.
+
+## Snapshot Summary (`{{VERSION_TAG}}`)
+
+| Metric | Value |
+| --- | --- |
+| Total sample rows | `{{TOTAL_ROWS}}` |
+| Distinct CI build runs (`run_id`) | `{{DISTINCT_RUNS}}` |
+| Date coverage (UTC) | `{{MIN_DATE}}` to `{{MAX_DATE}}` |
+| Parquet size | `{{TOTAL_SIZE_MB}} MB` (`{{SHARD_COUNT}}` shard(s)) |
+| Rows with JIT counters | `{{JIT_COVERAGE_PCT}}%` |
+| Rows with class-loading counters | `{{CLASS_COVERAGE_PCT}}%` |
+
+### Process Breakdown
+
+| Process (`name`) | Rows | Distinct Runs |
+| --- | ---: | ---: |
+| `GradleDaemon` | `{{GRADLE_DAEMON_ROWS}}` | `{{GRADLE_DAEMON_RUNS}}` |
+| `KotlinCompileDaemon` | `{{KOTLIN_DAEMON_ROWS}}` | `{{KOTLIN_DAEMON_RUNS}}` |
+| `GradleWorkerMain` | `{{GRADLE_WORKER_ROWS}}` | `{{GRADLE_WORKER_RUNS}}` |
+
+## Schema
+
+Each row is one polling observation for one JVM process (`pid`) during a CI run (`run_id`).
+
+| Column | Type | Unit / Notes |
+| --- | --- | --- |
+| `run_id` | `string` | Anonymized 16-char salted SHA-256 hash identifying one CI build job |
+| `sample_timestamp` | `timestamp` | UTC observation timestamp |
+| `elapsed_time` | `int64` | Seconds elapsed since monitoring started for the run |
+| `pid` | `string` | OS process ID within the CI runner (unique only within a `run_id`) |
+| `name` | `string` | JVM process type: `GradleDaemon`, `KotlinCompileDaemon`, or `GradleWorkerMain` |
+| `heap_used` | `int64` | JVM heap used (MB) |
+| `heap_cap` | `int64` | Committed JVM heap capacity (MB) |
+| `rss` | `int64` | Resident Set Size (MB) |
+| `gc_time` | `int64` | Cumulative garbage collection time (ms) |
+| `jit_compiled_methods` | `int64` (nullable) | Cumulative JIT compiled methods (`jstat -compiler`) |
+| `jit_failed_compilations` | `int64` (nullable) | Cumulative failed JIT compilations |
+| `jit_invalidated_compilations` | `int64` (nullable) | Cumulative invalidated JIT compilations |
+| `jit_compilation_time_ms` | `int64` (nullable) | Cumulative compiler-thread elapsed time (ms; not process CPU time) |
+| `classes_loaded` | `int64` (nullable) | Cumulative loaded classes (`jstat -class`) |
+| `classes_unloaded` | `int64` (nullable) | Cumulative unloaded classes |
+| `class_load_time_ms` | `int64` (nullable) | Cumulative class-loading time (ms) |
+| `run_finished_at` | `timestamp` | UTC timestamp when the monitored CI job finished |
+
+`NULL` values in JIT and class-loading columns indicate earlier runs collected before `jstat -compiler` / `jstat -class` telemetry was enabled, or environments where `jstat` could not attach.
+
+## Cleaning & Anonymization
+
+Published reproducibly via [`cdsap/build-process-dataset`](https://github.com/cdsap/build-process-dataset):
+
+- `run_id` is replaced with a deterministic 16-character salted SHA-256 hex digest.
+- No source code, repository names, task graphs, or JVM launch flags (`vm_flags`) are included.
+- Deduplicated on `(run_id, pid, sample_timestamp)`.
+- Filtered to non-negative `heap_used`, `heap_cap`, `gc_time`, `elapsed_time`, positive `rss`, and runs with at least 3 samples.
+
+## Usage
+
+```python
+from datasets import load_dataset
+
+ds = load_dataset("cdsap/build-process-dataset", split="train")
+print(ds)
+```
+
+### Leak-Free Chronological Split (Recommended for Forecasting)
+
+Because rows within a single `run_id` are sequential 5-second observations, **always split by `run_id`** (never randomly by row). For forecasting benchmarks, split chronologically by `run_finished_at`:
+
+```python
+import pandas as pd
+from datasets import load_dataset
+
+df = load_dataset("cdsap/build-process-dataset", split="train").to_pandas()
+runs = df.groupby("run_id")["run_finished_at"].max().sort_values()
+
+n = len(runs)
+train_ids = set(runs.index[: int(n * 0.70)])
+val_ids = set(runs.index[int(n * 0.70) : int(n * 0.85)])
+test_ids = set(runs.index[int(n * 0.85) :])
+
+train_df = df[df["run_id"].isin(train_ids)]
+val_df = df[df["run_id"].isin(val_ids)]
+test_df = df[df["run_id"].isin(test_ids)]
+```
+
+## License
+
+Dedicated to the public domain under **CC0 1.0 Universal** (`cc0-1.0`).
