@@ -85,7 +85,7 @@ Published reproducibly via [`cdsap/build-process-dataset`](https://github.com/cd
 ```python
 from datasets import load_dataset
 
-ds = load_dataset("cdsap/build-process-dataset", split="train")
+ds = load_dataset("inakivillar/build-process-dataset", split="train")
 print(ds)
 ```
 
@@ -97,7 +97,7 @@ Because rows within a single `run_id` are sequential 5-second observations, **al
 import pandas as pd
 from datasets import load_dataset
 
-df = load_dataset("cdsap/build-process-dataset", split="train").to_pandas()
+df = load_dataset("inakivillar/build-process-dataset", split="train").to_pandas()
 runs = df.groupby("run_id")["run_finished_at"].max().sort_values()
 
 n = len(runs)

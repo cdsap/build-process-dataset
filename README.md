@@ -1,6 +1,6 @@
 # build-process-dataset
 
-Reproducible BigQuery-to-Parquet export, validation, and Hugging Face Hub publishing pipeline for the [`cdsap/build-process-dataset`](https://huggingface.co/datasets/cdsap/build-process-dataset) JVM build telemetry dataset (collected with [Build Process Watcher](https://github.com/cdsap/build-process-watcher)).
+Reproducible BigQuery-to-Parquet export, validation, and Hugging Face Hub publishing pipeline for the [`inakivillar/build-process-dataset`](https://huggingface.co/datasets/inakivillar/build-process-dataset) JVM build telemetry dataset (collected with [Build Process Watcher](https://github.com/cdsap/build-process-watcher)).
 
 ## What It Does
 
@@ -13,7 +13,7 @@ Reproducible BigQuery-to-Parquet export, validation, and Hugging Face Hub publis
    - Exact 17-column Arrow schema and nullable `int64` types for optional `jstat` columns.
    - Confirms every `run_id` matches `^[0-9a-f]{16}$` (zero raw IDs).
    - Confirms zero duplicate keys, zero negative metrics, and only expected process names.
-3. **Publishes** to Hugging Face (`cdsap/build-process-dataset`, `CC0-1.0`) with an auto-updated Dataset Card (`hf/README.md.tmpl`) and semver git tag (`v1.0.0`, `v1.1.0`, …), then cleans up temporary GCS staging files.
+3. **Publishes** to Hugging Face (`inakivillar/build-process-dataset`, `CC0-1.0`) with an auto-updated Dataset Card (`hf/README.md.tmpl`) and semver git tag (`v1.0.0`, `v1.1.0`, …), then cleans up temporary GCS staging files.
 
 ## One-Time Setup
 
@@ -31,8 +31,8 @@ Grant a least-privilege GCP service account:
 - `roles/storage.objectAdmin` on `gs://<YOUR_BUCKET>`
 
 ### 3. Hugging Face Dataset Repo & Token
-1. Create [`cdsap/build-process-dataset`](https://huggingface.co/new-dataset) on Hugging Face (start **Private** to verify the Dataset Viewer, then flip **Public**).
-2. Create a fine-grained Hugging Face write token scoped only to `cdsap/build-process-dataset`.
+1. Create [`inakivillar/build-process-dataset`](https://huggingface.co/new-dataset) on Hugging Face (start **Private** to verify the Dataset Viewer, then flip **Public**).
+2. Create a fine-grained Hugging Face write token scoped only to `inakivillar/build-process-dataset`.
 
 ### 4. GitHub Repository Secrets
 Add these under **Settings → Secrets and variables → Actions**:

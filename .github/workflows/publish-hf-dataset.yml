@@ -63,7 +63,7 @@ jobs:
           GCS_EXPORT_BUCKET: ${{ secrets.GCS_EXPORT_BUCKET }}
           RUN_ID_HASH_SALT: ${{ secrets.RUN_ID_HASH_SALT }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_REPO_ID: "cdsap/build-process-dataset"
+          HF_REPO_ID: "inakivillar/build-process-dataset"
         run: |
           VERSION_TAG="${{ inputs.version_tag }}"
           if [ -z "$VERSION_TAG" ]; then
